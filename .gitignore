@@ -1,0 +1,30 @@
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+.superpowers/
+client/Library/
+client/Temp/
+client/obj/
+client/Logs/
+client/Build/
+client/UserSettings/
+*.pidb
+*.booproj
+*.svd
+*.userprefs
+*.unityproj
+*.suo
+*.user
+*.sln
+*.csproj
+
+# Unity auto-generated
+client/Packages/packages-lock.json
+client/*.slnx
+client/*.sln
+client/.vscode/
+
+# MikroORM schema snapshots (auto-generated, not for version control)
+server/src/migrations/.snapshot-*.json

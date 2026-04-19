@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MetaKing</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0a0f; color: #fff; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+    #canvas { display: block; }
+
+    /* HUD */
+    #hud {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+    }
+
+    #vitals {
+      position: absolute; top: 16px; left: 16px;
+      background: rgba(0,0,0,0.65);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 12px 16px;
+      min-width: 200px;
+      pointer-events: none;
+    }
+    .vital-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 13px; }
+    .vital-row:last-child { margin-bottom: 0; }
+    .vital-label { color: #aaa; width: 60px; }
+    .vital-bar { flex: 1; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
+    .vital-fill { height: 100%; border-radius: 4px; transition: width 0.2s; }
+    #mana-fill    { background: linear-gradient(90deg, #4a90d9, #7bb3f0); }
+    #stamina-fill { background: linear-gradient(90deg, #e8a030, #f0c060); }
+    #hearts-fill  { background: linear-gradient(90deg, #d94a4a, #f07070); }
+    .vital-val { font-size: 12px; color: #ddd; width: 50px; text-align: right; }
+
+    #nickname-display {
+      position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+      font-size: 14px; color: #ccc; letter-spacing: 1px;
+      background: rgba(0,0,0,0.5); padding: 4px 12px; border-radius: 20px;
+    }
+    #weapon-display {
+      position: absolute; top: 46px; left: 50%; transform: translateX(-50%);
+      font-size: 12px; color: #e8a030;
+      background: rgba(0,0,0,0.5); padding: 2px 10px; border-radius: 20px;
+    }
+
+    /* Leaderboard */
+    #leaderboard {
+      position: absolute; top: 16px; right: 16px;
+      background: rgba(0,0,0,0.7);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 10px 14px;
+      min-width: 200px;
+      max-height: 260px;
+      overflow: hidden;
+    }
+    #leaderboard h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #888; margin-bottom: 8px; }
+    .lb-row { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .lb-row:last-child { border-bottom: none; }
+    .lb-rank { color: #666; width: 18px; }
+    .lb-name { flex: 1; color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lb-mana { color: #7bb3f0; font-weight: 600; }
+    .lb-crown { color: gold; }
+    .lb-row-you { background: rgba(232,160,48,0.12); border-radius: 4px; }
+    .lb-row-you .lb-name { color: #e8a030; }
+
+    /* Toast */
+    #toast {
+      position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 20px;
+      padding: 8px 20px;
+      font-size: 14px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+      white-space: nowrap;
+    }
+    #toast.visible { opacity: 1; }
+
+    /* Overlay screens */
+    .screen {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.85);
+      pointer-events: all;
+    }
+    .screen.hidden { display: none; }
+
+    .screen h1 { font-size: 48px; letter-spacing: 4px; margin-bottom: 8px; }
+    .screen h1 span { color: #e8a030; }
+    .screen p { color: #888; margin-bottom: 32px; font-size: 14px; }
+
+    .btn {
+      background: linear-gradient(135deg, #e8a030, #d4711a);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 32px;
+      font-size: 16px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: opacity 0.2s;
+      margin: 4px;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn.secondary {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    /* Nickname screen */
+    #nick-input {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 18px;
+      padding: 10px 16px;
+      text-align: center;
+      width: 240px;
+      margin-bottom: 8px;
+      outline: none;
+    }
+    #nick-error { color: #d94a4a; font-size: 13px; min-height: 20px; margin-bottom: 12px; }
+
+    /* Death summary */
+    #summary-stats { color: #ccc; font-size: 15px; margin-bottom: 24px; line-height: 2; text-align: center; }
+    #summary-stats strong { color: #e8a030; }
+
+    /* Onboarding */
+    #screen-onboarding .onboard-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+      margin-bottom: 32px; max-width: 480px;
+    }
+    #screen-onboarding .onboard-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+    #screen-onboarding .onboard-card .icon { font-size: 28px; margin-bottom: 8px; }
+    #screen-onboarding .onboard-card h4 { font-size: 13px; color: #e8a030; margin-bottom: 4px; }
+    #screen-onboarding .onboard-card p { font-size: 11px; color: #888; line-height: 1.5; margin: 0; }
+
+    /* Controls hint */
+    #controls-hint {
+      position: absolute; bottom: 16px; left: 16px;
+      font-size: 11px; color: #555;
+      line-height: 1.8;
+    }
+
+    /* Portal interaction prompt */
+    #portal-prompt {
+      position: absolute; bottom: 180px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.75);
+      border: 1px solid rgba(100,150,255,0.4);
+      border-radius: 20px;
+      padding: 6px 18px;
+      font-size: 13px;
+      color: #7bb3f0;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    #portal-prompt.visible { opacity: 1; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <div id="hud" class="hidden">
+    <!-- Vitals -->
+    <div id="vitals">
+      <div class="vital-row">
+        <span class="vital-label">Mana</span>
+        <div class="vital-bar"><div class="vital-fill" id="mana-fill" style="width:100%"></div></div>
+        <span class="vital-val" id="mana-val">100</span>
+      </div>
+      <div class="vital-row">
+        <span class="vital-label">Stamina</span>
+        <div class="vital-bar"><div class="vital-fill" id="stamina-fill" style="width:1%"></div></div>
+        <span class="vital-val" id="stamina-val">10/999</span>
+      </div>
+      <div class="vital-row">
+        <span class="vital-label">Hearts</span>
+        <div class="vital-bar"><div class="vital-fill" id="hearts-fill" style="width:100%"></div></div>
+        <span class="vital-val" id="hearts-val">20♥</span>
+      </div>
+    </div>
+
+    <div id="nickname-display">Player</div>
+    <div id="weapon-display">Stick (T1)</div>
+
+    <!-- Leaderboard -->
+    <div id="leaderboard">
+      <h3>Leaderboard</h3>
+      <div id="lb-entries"></div>
+    </div>
+
+    <div id="toast"></div>
+    <div id="portal-prompt">Press E to enter portal</div>
+
+    <div id="controls-hint">
+      WASD — Move &nbsp;|&nbsp; Space — Jump<br>
+      P — Dodge roll &nbsp;|&nbsp; O — Attack &nbsp;|&nbsp; E — Enter portal<br>
+      Scroll — Zoom &nbsp;|&nbsp; Click — Lock mouse<br>
+      <span style="color:#e8a030">Walk near warlocks to auto-attack</span>
+    </div>
+  </div>
+
+  <!-- Screens -->
+  <div id="screen-title" class="screen">
+    <h1>Meta<span>King</span></h1>
+    <p>Steal mana. Survive. Rule.</p>
+    <button class="btn" id="btn-play">Play (Offline)</button>
+    <button class="btn secondary" id="btn-play-online" style="display:none">Play with Account</button>
+    <p style="margin-top:16px; font-size:12px; color:#555">No server? Portals work offline too.</p>
+    <p id="loading-status" style="margin-top:8px; font-size:11px; color:#444; min-height:16px"></p>
+  </div>
+
+  <div id="screen-nickname" class="screen hidden">
+    <h1>Meta<span>King</span></h1>
+    <p>Choose your name</p>
+    <input id="nick-input" type="text" maxlength="16" placeholder="Nickname" />
+    <div id="nick-error"></div>
+    <button class="btn" id="btn-nick-confirm">Confirm</button>
+  </div>
+
+  <div id="screen-onboarding" class="screen hidden">
+    <h1>Meta<span>King</span></h1>
+    <p>How to play</p>
+    <div class="onboard-grid">
+      <div class="onboard-card">
+        <div class="icon">🏃</div>
+        <h4>Move &amp; Jump</h4>
+        <p>WASD to move<br>Space to jump<br>P to dodge roll</p>
+      </div>
+      <div class="onboard-card">
+        <div class="icon">⚔️</div>
+        <h4>Fight Warlocks</h4>
+        <p>Walk near warlocks to auto-attack.<br>Press O to attack on demand.</p>
+      </div>
+      <div class="onboard-card">
+        <div class="icon">🌀</div>
+        <h4>Enter Portals</h4>
+        <p>Press E near a portal to steal mana from other players &amp; upgrade your weapon.</p>
+      </div>
+      <div class="onboard-card">
+        <div class="icon">👑</div>
+        <h4>Reach #1</h4>
+        <p>Collect mana, climb the leaderboard, and become the MetaKing.</p>
+      </div>
+    </div>
+    <button class="btn" id="btn-onboarding-continue">Let's Go →</button>
+  </div>
+
+  <div id="screen-death" class="screen hidden">
+    <h1 style="font-size:36px">You <span>Died</span></h1>
+    <div id="summary-stats"></div>
+    <button class="btn" id="btn-play-again">Play Again</button>
+    <button class="btn secondary" id="btn-quit">Main Menu</button>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
